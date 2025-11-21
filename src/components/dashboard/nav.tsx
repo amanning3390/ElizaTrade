@@ -11,6 +11,7 @@ import {
   Wallet,
   Settings,
   LogOut,
+  DollarSign,
 } from 'lucide-react';
 
 interface NavProps {
@@ -28,6 +29,7 @@ export function DashboardNav({ user }: NavProps) {
     { href: '/dashboard/opportunities', label: 'Opportunities', icon: TrendingUp },
     { href: '/dashboard/trades', label: 'Trades', icon: Briefcase },
     { href: '/dashboard/portfolio', label: 'Portfolio', icon: Wallet },
+    { href: '/dashboard/fees', label: 'Fees', icon: DollarSign },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
   ];
 

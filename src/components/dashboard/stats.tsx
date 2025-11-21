@@ -2,25 +2,28 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Wallet, TrendingUp, Briefcase, AlertCircle } from 'lucide-react';
+import { Wallet, TrendingUp, Briefcase, AlertCircle, DollarSign } from 'lucide-react';
 
 export function DashboardStats() {
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const [tradesRes, opportunitiesRes] = await Promise.all([
+      const [tradesRes, opportunitiesRes, feesRes] = await Promise.all([
         fetch('/api/trades'),
         fetch('/api/opportunities'),
+        fetch('/api/fees?stats=true'),
       ]);
 
       const trades = await tradesRes.json();
       const opportunities = await opportunitiesRes.json();
+      const fees = await feesRes.json();
 
       return {
         totalTrades: trades.trades?.length || 0,
         activeOpportunities: opportunities.opportunities?.length || 0,
         portfolioValue: 100000, // Mock value
         profitLoss: 5000, // Mock value
+        totalFeesPaid: fees.totalFees || 0,
       };
     },
   });
@@ -45,10 +48,10 @@ export function DashboardStats() {
       change: 'Active',
     },
     {
-      title: 'P&L',
-      value: `$${stats?.profitLoss.toLocaleString() || '0'}`,
-      icon: AlertCircle,
-      change: '+2.1%',
+      title: 'Total Fees Paid',
+      value: `$${stats?.totalFeesPaid?.toFixed(2) || '0.00'}`,
+      icon: DollarSign,
+      change: `${stats?.feeCount || 0} transactions`,
     },
   ];
 

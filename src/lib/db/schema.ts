@@ -147,9 +147,48 @@ export const agentMemories = pgTable(
   }
 );
 
+export const feeStatusEnum = pgEnum('fee_status', [
+  'pending',
+  'collected',
+  'refunded',
+  'failed',
+]);
+
+export const transactionFees = pgTable(
+  'transaction_fees',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tradeId: uuid('trade_id')
+      .notNull()
+      .references(() => trades.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    feeAmount: decimal('fee_amount', { precision: 20, scale: 8 }).notNull(),
+    feePercentage: decimal('fee_percentage', { precision: 5, scale: 4 }).notNull(),
+    tradeValue: decimal('trade_value', { precision: 20, scale: 8 }).notNull(),
+    status: feeStatusEnum('status').default('pending').notNull(),
+    collectedAt: timestamp('collected_at'),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      tradeIdIdx: index('transaction_fees_trade_id_idx').on(table.tradeId),
+      userIdIdx: index('transaction_fees_user_id_idx').on(table.userId),
+      agentIdIdx: index('transaction_fees_agent_id_idx').on(table.agentId),
+      createdAtIdx: index('transaction_fees_created_at_idx').on(table.createdAt),
+    };
+  }
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   agents: many(agents),
+  fees: many(transactionFees),
 }));
 
 export const agentsRelations = relations(agents, ({ one, many }) => ({
@@ -162,11 +201,12 @@ export const agentsRelations = relations(agents, ({ one, many }) => ({
   memories: many(agentMemories),
 }));
 
-export const tradesRelations = relations(trades, ({ one }) => ({
+export const tradesRelations = relations(trades, ({ one, many }) => ({
   agent: one(agents, {
     fields: [trades.agentId],
     references: [agents.id],
   }),
+  fees: many(transactionFees),
 }));
 
 export const opportunitiesRelations = relations(opportunities, ({ one }) => ({
@@ -182,4 +222,20 @@ export const agentMemoriesRelations = relations(agentMemories, ({ one }) => ({
     references: [agents.id],
   }),
 }));
+
+export const transactionFeesRelations = relations(transactionFees, ({ one }) => ({
+  trade: one(trades, {
+    fields: [transactionFees.tradeId],
+    references: [trades.id],
+  }),
+  user: one(users, {
+    fields: [transactionFees.userId],
+    references: [users.id],
+  }),
+  agent: one(agents, {
+    fields: [transactionFees.agentId],
+    references: [agents.id],
+  }),
+}));
+
 

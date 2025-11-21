@@ -82,14 +82,17 @@ export const executeTradeAction: Action = {
         symbol,
       });
 
+      const feeInfo = result.fee
+        ? ` (Fee: $${result.fee.amount.toFixed(2)})`
+        : '';
       await callback({
-        text: `✅ Trade executed: ${result.summary}`,
+        text: `✅ Trade executed: ${result.summary}${feeInfo}`,
       });
 
       // Store trade in memory
       await runtime.createMemory({
         content: {
-          text: `Executed ${side} ${amount} ${symbol} at ${result.price}`,
+          text: `Executed ${side} ${amount} ${symbol} at ${result.price}${feeInfo}`,
           metadata: {
             type: 'trade',
             tradeId: result.tradeId,
@@ -97,6 +100,7 @@ export const executeTradeAction: Action = {
             amount,
             symbol,
             price: result.price,
+            fee: result.fee,
           },
         },
       });

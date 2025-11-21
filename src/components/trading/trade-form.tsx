@@ -9,8 +9,30 @@ export function TradeForm() {
   const [symbol, setSymbol] = useState('BTC');
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
+  const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
+
+  // Fetch current price for fee estimation
+  useQuery({
+    queryKey: ['price', symbol],
+    queryFn: async () => {
+      const res = await fetch(`/api/market-data/prices?symbols=${symbol}`);
+      const data = await res.json();
+      return data.prices[symbol];
+    },
+    enabled: !!symbol && !!amount,
+    onSuccess: (data) => {
+      if (data?.price) {
+        setEstimatedPrice(data.price);
+      }
+    },
+  });
+
+  // Calculate estimated fee
+  const estimatedFee = estimatedPrice && amount
+    ? Math.max((parseFloat(amount) * estimatedPrice) * 0.001, 0.01) // 0.1% fee, $0.01 minimum
+    : null;
 
   const { data: agents } = useQuery({
     queryKey: ['agents'],
@@ -91,6 +113,22 @@ export function TradeForm() {
               required
             />
           </div>
+          {estimatedFee && amount && (
+            <div className="rounded-md bg-muted p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Estimated Trade Value:</span>
+                <span className="font-medium">
+                  ${(parseFloat(amount) * (estimatedPrice || 0)).toFixed(2)}
+                </span>
+              </div>
+              <div className="mt-2 flex justify-between border-t pt-2">
+                <span className="text-muted-foreground">Transaction Fee (0.1%):</span>
+                <span className="font-medium text-primary">
+                  ${estimatedFee.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? 'Executing...' : 'Execute Trade'}
           </Button>

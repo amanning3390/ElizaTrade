@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { trades, agents } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { getAgentRuntime } from '@/lib/eliza/runtime';
+import { calculateFee, recordFee } from '@/lib/services/feeService';
 
 export async function GET(request: Request) {
   try {
@@ -50,7 +51,13 @@ export async function GET(request: Request) {
       agentIdSet.has(trade.agentId)
     );
 
-    return NextResponse.json({ trades: filteredTrades });
+    // Include fee information from metadata
+    const tradesWithFees = filteredTrades.map((trade) => ({
+      ...trade,
+      fee: (trade.metadata as any)?.fee || null,
+    }));
+
+    return NextResponse.json({ trades: tradesWithFees });
   } catch (error) {
     console.error('Error fetching trades:', error);
     return NextResponse.json(
@@ -124,6 +131,11 @@ export async function POST(request: Request) {
       async () => []
     );
 
+    // Calculate trade value and fee
+    const tradePrice = price || parseFloat((tradeResult as any)?.values?.trade?.price || '0');
+    const tradeValue = parseFloat(amount) * tradePrice;
+    const feeCalculation = calculateFee(tradeValue);
+
     // Store trade in database
     const [newTrade] = await db
       .insert(trades)
@@ -132,13 +144,30 @@ export async function POST(request: Request) {
         symbol,
         side: side as any,
         amount: amount.toString(),
-        price: price ? price.toString() : '0',
+        price: tradePrice.toString(),
         status: 'executed',
         executedAt: new Date(),
+        metadata: {
+          fee: feeCalculation,
+        } as any,
       })
       .returning();
 
-    return NextResponse.json({ trade: newTrade }, { status: 201 });
+    // Record transaction fee
+    await recordFee(
+      newTrade.id,
+      session.user.id,
+      agentId,
+      feeCalculation
+    );
+
+    return NextResponse.json(
+      {
+        trade: newTrade,
+        fee: feeCalculation,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Error executing trade:', error);
     return NextResponse.json(
