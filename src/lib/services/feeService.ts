@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { transactionFees, trades } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { transferUSDCToTreasury } from './usdcTransferService';
 
 export interface FeeCalculation {
   feeAmount: number;
@@ -49,13 +50,14 @@ export function calculateFee(
 }
 
 /**
- * Record a transaction fee in the database
+ * Record a transaction fee in the database and transfer USDC to treasury
  */
 export async function recordFee(
   tradeId: string,
   userId: string,
   agentId: string,
-  feeCalculation: FeeCalculation
+  feeCalculation: FeeCalculation,
+  autoTransfer: boolean = true
 ): Promise<string> {
   const [fee] = await db
     .insert(transactionFees)
@@ -70,6 +72,26 @@ export async function recordFee(
       collectedAt: new Date(),
     })
     .returning();
+
+  // Automatically transfer USDC to treasury wallet
+  if (autoTransfer && process.env.TREASURY_WALLET_ADDRESS) {
+    try {
+      const transferResult = await transferUSDCToTreasury(
+        feeCalculation.feeAmount,
+        fee.id
+      );
+
+      if (!transferResult.success) {
+        console.error('Failed to transfer USDC:', transferResult.error);
+        // Fee is still recorded, but transfer failed
+        // Could implement retry logic here
+      }
+    } catch (error) {
+      console.error('Error in automatic USDC transfer:', error);
+      // Fee is still recorded even if transfer fails
+      // Admin can manually retry transfers later
+    }
+  }
 
   return fee.id;
 }

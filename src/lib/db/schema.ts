@@ -150,6 +150,7 @@ export const agentMemories = pgTable(
 export const feeStatusEnum = pgEnum('fee_status', [
   'pending',
   'collected',
+  'transferred',
   'refunded',
   'failed',
 ]);
@@ -172,6 +173,8 @@ export const transactionFees = pgTable(
     tradeValue: decimal('trade_value', { precision: 20, scale: 8 }).notNull(),
     status: feeStatusEnum('status').default('pending').notNull(),
     collectedAt: timestamp('collected_at'),
+    transferredAt: timestamp('transferred_at'),
+    transferTxHash: varchar('transfer_tx_hash', { length: 255 }),
     metadata: jsonb('metadata'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },

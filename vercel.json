@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/alert-check",
       "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/cron/batch-transfer-fees",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
