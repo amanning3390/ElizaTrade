@@ -1,0 +1,17 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/market-scan",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/portfolio-rebalance",
+      "schedule": "0 0 * * 0"
+    },
+    {
+      "path": "/api/cron/alert-check",
+      "schedule": "*/1 * * * *"
+    }
+  ]
+}
+
